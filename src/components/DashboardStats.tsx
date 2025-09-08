@@ -1,21 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { TrendingUp, Users, Mail, Clock } from "lucide-react";
-
-interface InviteCode {
-  id: string;
-  code: string;
-  dateGenerated: Date;
-  expiryDate: Date;
-  status: "Used" | "Not Used";
-  emailSentTo?: string[];
-}
+import { useInviteCodes } from "@/hooks/useInviteCodes";
 
 interface DashboardStatsProps {
-  inviteCodes: InviteCode[];
+  // Remove props since we'll use the hook internally
 }
 
-export const DashboardStats = ({ inviteCodes }: DashboardStatsProps) => {
+export const DashboardStats = ({}: DashboardStatsProps) => {
+  const { inviteCodes } = useInviteCodes();
+  
   const getTotalStats = () => {
     const total = inviteCodes.length;
     const used = inviteCodes.filter(code => code.status === "Used").length;

@@ -4,30 +4,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, Mail, Sparkles } from "lucide-react";
-
-interface InviteCode {
-  id: string;
-  code: string;
-  dateGenerated: Date;
-  expiryDate: Date;
-  status: "Used" | "Not Used";
-  emailSentTo?: string[];
-}
+import { useInviteCodes } from "@/hooks/useInviteCodes";
+import { Copy, Mail, Sparkles, Loader2, X } from "lucide-react";
 
 interface InviteCodeGeneratorProps {
-  onCodeGenerated: (code: InviteCode) => void;
+  // Remove props since we'll use the hook internally
 }
 
-export const InviteCodeGenerator = ({ onCodeGenerated }: InviteCodeGeneratorProps) => {
-  const [isGenerating, setIsGenerating] = useState(false);
+export const InviteCodeGenerator = ({}: InviteCodeGeneratorProps) => {
   const [lastGeneratedCode, setLastGeneratedCode] = useState<string>("");
   const [recipientEmails, setRecipientEmails] = useState<string>("");
+  const [showEmailPreview, setShowEmailPreview] = useState<boolean>(false);
   const { toast } = useToast();
+  const { createCode: createInviteCode, isCreating, sendEmail, isSendingEmail } = useInviteCodes();
 
   const generateInviteCode = () => {
-    setIsGenerating(true);
-    
     // Generate 7-character alphanumeric code starting with "NA"
     const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     let code = "NA";
@@ -36,24 +27,19 @@ export const InviteCodeGenerator = ({ onCodeGenerated }: InviteCodeGeneratorProp
       code += characters.charAt(Math.floor(Math.random() * characters.length));
     }
     
-    const newInviteCode: InviteCode = {
-      id: Date.now().toString(),
+    // Set expiry date to 30 days from now
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    
+    const createData = {
       code,
-      dateGenerated: new Date(),
-      expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-      status: "Not Used",
+      expiresAt,
+      maxUses: 1,
     };
     
-    setLastGeneratedCode(code);
-    onCodeGenerated(newInviteCode);
+    createInviteCode(createData);
     
-    setTimeout(() => {
-      setIsGenerating(false);
-      toast({
-        title: "Invite Code Generated",
-        description: `New invite code: ${code}`,
-      });
-    }, 1000);
+    // Set the generated code for display
+    setLastGeneratedCode(code);
   };
 
   const copyToClipboard = (text: string) => {
@@ -64,8 +50,12 @@ export const InviteCodeGenerator = ({ onCodeGenerated }: InviteCodeGeneratorProp
     });
   };
 
-  const getEmailTemplate = (code: string) => {
-    return `Dear [First Name],
+  const getEmailTemplate = (code: string, email?: string) => {
+    // Extract first name from email address
+    const firstName = email ? email.split('@')[0].split('.')[0] : '[First Name]';
+    const capitalizedFirstName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+    
+    return `Dear ${capitalizedFirstName},
 
 Congratulations! You have been selected to join Helium — the OS for your business, in our first-ever Public Beta experience for businesses.
 
@@ -94,31 +84,56 @@ https://he2.ai`;
       return;
     }
 
-    const emailContent = getEmailTemplate(lastGeneratedCode);
-    
-    // Create a modal-like preview
-    const newWindow = window.open("", "_blank", "width=600,height=500");
-    if (newWindow) {
-      newWindow.document.write(`
-        <html>
-          <head>
-            <title>Email Preview</title>
-            <style>
-              body { font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; }
-              .email-content { background: #f9f9f9; padding: 20px; border-radius: 8px; }
-              .code { background: #e7e5ff; padding: 10px; border-radius: 4px; font-weight: bold; font-size: 18px; }
-            </style>
-          </head>
-          <body>
-            <h2>Email Preview</h2>
-            <div class="email-content">
-              <pre style="white-space: pre-wrap; font-family: Arial, sans-serif;">${emailContent}</pre>
-            </div>
-          </body>
-        </html>
-      `);
-      newWindow.document.close();
+    setShowEmailPreview(!showEmailPreview);
+  };
+
+  const handleSendEmail = () => {
+    if (!lastGeneratedCode) {
+      toast({
+        title: "No invite code",
+        description: "Please generate an invite code first",
+        variant: "destructive",
+      });
+      return;
     }
+
+    if (!recipientEmails.trim()) {
+      toast({
+        title: "No recipient",
+        description: "Please enter an email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Get single email address
+    const email = recipientEmails.trim();
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    if (!emailRegex.test(email)) {
+      toast({
+        title: "Invalid email format",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Extract first name from email
+    const firstName = email.split('@')[0].split('.')[0];
+    const capitalizedFirstName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+
+    // Send email automatically
+    sendEmail({
+      email,
+      inviteCode: lastGeneratedCode,
+      firstName: capitalizedFirstName,
+    });
+
+    // Clear the email field after sending
+    setRecipientEmails("");
   };
 
   return (
@@ -134,11 +149,18 @@ https://he2.ai`;
           <div className="text-center">
             <Button 
               onClick={generateInviteCode} 
-              disabled={isGenerating}
+              disabled={isCreating}
               className="bg-gradient-primary hover:opacity-90 transition-smooth shadow-elegant"
               size="lg"
             >
-              {isGenerating ? "Generating..." : "Generate New Code"}
+              {isCreating ? (
+                <>
+                  <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                "Generate New Code"
+              )}
             </Button>
           </div>
           
@@ -171,13 +193,12 @@ https://he2.ai`;
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="emails">Recipient Email Addresses</Label>
+            <Label htmlFor="emails">Recipient Email Address</Label>
             <Input
               id="emails"
-              placeholder="Enter email addresses (comma-separated)"
+              placeholder="Enter email address (e.g., user@example.com)"
               value={recipientEmails}
               onChange={(e) => setRecipientEmails(e.target.value)}
-              className="min-h-[80px]"
             />
           </div>
           
@@ -188,18 +209,57 @@ https://he2.ai`;
               disabled={!lastGeneratedCode}
               className="flex-1"
             >
-              Preview Email
+              {showEmailPreview ? "Hide Preview" : "Preview Email"}
             </Button>
             <Button 
-              disabled={!lastGeneratedCode || !recipientEmails.trim()}
+              onClick={handleSendEmail}
+              disabled={!lastGeneratedCode || !recipientEmails.trim() || isSendingEmail}
               className="flex-1"
             >
-              Send Email
+              {isSendingEmail ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                "Send Email"
+              )}
             </Button>
           </div>
           
+          {/* Email Preview Section */}
+          {showEmailPreview && (
+            <div className="mt-4 p-4 bg-muted rounded-lg border">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium text-sm">Email Preview</h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowEmailPreview(false)}
+                  className="h-6 w-6 p-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="font-medium">To:</span> {recipientEmails || "No recipient entered"}
+                </div>
+                <div>
+                  <span className="font-medium">Subject:</span> Your Helium Beta Invitation
+                </div>
+                <div className="mt-3">
+                  <span className="font-medium">Message:</span>
+                  <div className="mt-2 p-3 bg-background rounded border text-xs whitespace-pre-wrap font-mono leading-relaxed">
+                    {getEmailTemplate(lastGeneratedCode, recipientEmails.trim() || undefined)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <p className="text-xs text-muted-foreground">
-            Email functionality requires backend integration with Supabase
+            Email will be sent automatically using our email service
           </p>
         </CardContent>
       </Card>

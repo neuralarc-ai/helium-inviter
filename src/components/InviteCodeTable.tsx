@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,39 +11,84 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, Copy, Mail, Search, FileText } from "lucide-react";
+import { useInviteCodes } from "@/hooks/useInviteCodes";
+import { 
+  CheckCircle, 
+  Copy, 
+  Mail, 
+  Search, 
+  FileText, 
+  Loader2, 
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
+} from "lucide-react";
 import { format } from "date-fns";
-
-interface InviteCode {
-  id: string;
-  code: string;
-  dateGenerated: Date;
-  expiryDate: Date;
-  status: "Used" | "Not Used";
-  emailSentTo?: string[];
-}
+import { InviteCode } from "@/lib/api";
 
 interface InviteCodeTableProps {
-  inviteCodes: InviteCode[];
-  onUpdateCode: (id: string, updates: Partial<InviteCode>) => void;
+  // Remove props since we'll fetch data internally
 }
 
-export const InviteCodeTable = ({ inviteCodes, onUpdateCode }: InviteCodeTableProps) => {
+export const InviteCodeTable = ({}: InviteCodeTableProps) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [selectedCode, setSelectedCode] = useState<InviteCode | null>(null);
+  const [recipientEmail, setRecipientEmail] = useState("");
   const { toast } = useToast();
+  const { inviteCodes, isLoading, error, updateCode, isUpdating, sendEmail, isSendingEmail } = useInviteCodes();
 
-  const filteredCodes = inviteCodes.filter(code =>
-    code.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    code.status.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter codes based on search term
+  const filteredCodes = useMemo(() => {
+    return inviteCodes.filter(code =>
+      code.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      code.status.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [inviteCodes, searchTerm]);
+
+  // Pagination calculations
+  const totalItems = filteredCodes.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedCodes = filteredCodes.slice(startIndex, endIndex);
+
+  // Reset to first page when search term changes
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  // Pagination handlers
+  const goToFirstPage = () => setCurrentPage(1);
+  const goToPreviousPage = () => setCurrentPage(prev => Math.max(1, prev - 1));
+  const goToNextPage = () => setCurrentPage(prev => Math.min(totalPages, prev + 1));
+  const goToLastPage = () => setCurrentPage(totalPages);
+  const goToPage = (page: number) => setCurrentPage(Math.max(1, Math.min(totalPages, page)));
 
   const markAsUsed = (id: string) => {
-    onUpdateCode(id, { status: "Used" });
-    toast({
-      title: "Status Updated",
-      description: "Invite code marked as used",
-    });
+    updateCode({ id, updates: { status: "Used" } });
   };
 
   const copyCode = (code: string) => {
@@ -54,20 +99,62 @@ export const InviteCodeTable = ({ inviteCodes, onUpdateCode }: InviteCodeTablePr
     });
   };
 
+  const handleSendEmail = (code: InviteCode) => {
+    setSelectedCode(code);
+    setEmailDialogOpen(true);
+  };
+
+  const confirmSendEmail = () => {
+    if (!selectedCode || !recipientEmail.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(recipientEmail)) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Extract first name from email
+    const firstName = recipientEmail.split('@')[0].split('.')[0];
+    const capitalizedFirstName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+
+    sendEmail({
+      email: recipientEmail.trim(),
+      inviteCode: selectedCode.code,
+      firstName: capitalizedFirstName,
+    });
+
+    // Reset form and close dialog
+    setRecipientEmail("");
+    setEmailDialogOpen(false);
+    setSelectedCode(null);
+  };
+
   const isExpired = (expiryDate: Date) => {
     return new Date() > expiryDate;
   };
 
   const getStatusBadge = (code: InviteCode) => {
     if (code.status === "Used") {
-      return <Badge className="bg-success text-success-foreground">Used</Badge>;
+      return <Badge className="bg-neon-green text-white">Used</Badge>;
     }
     
     if (isExpired(code.expiryDate)) {
-      return <Badge variant="destructive">Expired</Badge>;
+      return <Badge className="bg-neon-pink text-white">Expired</Badge>;
     }
     
-    return <Badge className="bg-warning text-warning-foreground">Not Used</Badge>;
+    return <Badge className="bg-neon-yellow text-black">Not Used</Badge>;
   };
 
   const getTotalStats = () => {
@@ -81,40 +168,80 @@ export const InviteCodeTable = ({ inviteCodes, onUpdateCode }: InviteCodeTablePr
 
   const stats = getTotalStats();
 
-  return (
-    <Card className="shadow-card">
-      <CardHeader>
-        <div className="flex items-center justify-between">
+  // Loading state
+  if (isLoading) {
+    return (
+      <Card className="shadow-card">
+        <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
             Invite Code Reports
           </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <span className="ml-2 text-muted-foreground">Loading invite codes...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" />
+            Invite Code Reports
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-8 text-destructive">
+            <AlertCircle className="h-6 w-6 mr-2" />
+            <span>Failed to load invite codes. Please try again.</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="card-neon">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5 neon-blue" />
+            Invite Code Reports
+          </CardTitle>
           <div className="flex gap-4 text-sm">
             <div className="text-center">
-              <div className="font-bold text-2xl text-primary">{stats.total}</div>
-              <div className="text-muted-foreground">Total</div>
+              <div className="font-bold text-2xl neon-blue">{stats.total}</div>
+              <div className="text-black/70">Total</div>
             </div>
             <div className="text-center">
-              <div className="font-bold text-2xl text-success">{stats.used}</div>
-              <div className="text-muted-foreground">Used</div>
+              <div className="font-bold text-2xl neon-green">{stats.used}</div>
+              <div className="text-black/70">Used</div>
             </div>
             <div className="text-center">
-              <div className="font-bold text-2xl text-warning">{stats.active}</div>
-              <div className="text-muted-foreground">Active</div>
+              <div className="font-bold text-2xl neon-yellow">{stats.active}</div>
+              <div className="text-black/70">Active</div>
             </div>
             <div className="text-center">
-              <div className="font-bold text-2xl text-destructive">{stats.expired}</div>
-              <div className="text-muted-foreground">Expired</div>
+              <div className="font-bold text-2xl neon-pink">{stats.expired}</div>
+              <div className="text-black/70">Expired</div>
             </div>
           </div>
         </div>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 neon-cyan" />
           <Input
             placeholder="Search invite codes..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 input-neon"
           />
         </div>
       </CardHeader>
@@ -122,27 +249,27 @@ export const InviteCodeTable = ({ inviteCodes, onUpdateCode }: InviteCodeTablePr
         <div className="rounded-lg border overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="font-semibold">Invite Code</TableHead>
-                <TableHead className="font-semibold">Date Generated</TableHead>
-                <TableHead className="font-semibold">Expiry Date</TableHead>
-                <TableHead className="font-semibold">Status</TableHead>
-                <TableHead className="font-semibold">Actions</TableHead>
+              <TableRow className="bg-white/10">
+                <TableHead className="font-semibold neon-blue">Invite Code</TableHead>
+                <TableHead className="font-semibold neon-blue">Date Generated</TableHead>
+                <TableHead className="font-semibold neon-blue">Expiry Date</TableHead>
+                <TableHead className="font-semibold neon-blue">Status</TableHead>
+                <TableHead className="font-semibold neon-blue">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredCodes.length === 0 ? (
+              {paginatedCodes.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center py-8 text-white/70">
                     {searchTerm ? "No invite codes match your search" : "No invite codes generated yet"}
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredCodes.map((code) => (
-                  <TableRow key={code.id} className="hover:bg-muted/30 transition-smooth">
+                paginatedCodes.map((code) => (
+                  <TableRow key={code.id} className="hover:bg-white/5 transition-smooth">
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-semibold text-primary">{code.code}</span>
+                        <span className="font-mono font-semibold neon-green">{code.code}</span>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -168,17 +295,28 @@ export const InviteCodeTable = ({ inviteCodes, onUpdateCode }: InviteCodeTablePr
                               variant="outline"
                               size="sm"
                               onClick={() => markAsUsed(code.id)}
-                              className="text-xs"
+                              className="text-xs btn-neon-green"
+                              disabled={isUpdating}
                             >
-                              <CheckCircle className="h-3 w-3 mr-1" />
+                              {isUpdating ? (
+                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              ) : (
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                              )}
                               Mark Used
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
-                              className="text-xs"
+                              className="text-xs btn-neon-blue"
+                              onClick={() => handleSendEmail(code)}
+                              disabled={isSendingEmail}
                             >
-                              <Mail className="h-3 w-3 mr-1" />
+                              {isSendingEmail ? (
+                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              ) : (
+                                <Mail className="h-3 w-3 mr-1" />
+                              )}
                               Send Email
                             </Button>
                           </>
@@ -191,7 +329,196 @@ export const InviteCodeTable = ({ inviteCodes, onUpdateCode }: InviteCodeTablePr
             </TableBody>
           </Table>
         </div>
+        
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-6">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-white/70">Rows per page:</span>
+              <Select
+                value={itemsPerPage.toString()}
+                onValueChange={(value) => {
+                  setItemsPerPage(Number(value));
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5</SelectItem>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-white/70">
+                Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} results
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToFirstPage}
+                disabled={currentPage === 1}
+                className="h-8 w-8 p-0"
+              >
+                <ChevronsLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToPreviousPage}
+                disabled={currentPage === 1}
+                className="h-8 w-8 p-0"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              
+              {/* Page numbers */}
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={currentPage === pageNum ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => goToPage(pageNum)}
+                      className="h-8 w-8 p-0"
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToNextPage}
+                disabled={currentPage === totalPages}
+                className="h-8 w-8 p-0"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToLastPage}
+                disabled={currentPage === totalPages}
+                className="h-8 w-8 p-0"
+              >
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
+      
+      {/* Email Dialog */}
+      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send Invite Email</DialogTitle>
+            <DialogDescription>
+              Send the invite code <span className="font-mono font-semibold text-primary">{selectedCode?.code}</span> to a recipient.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Recipient Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="recipient@example.com"
+                value={recipientEmail}
+                onChange={(e) => setRecipientEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    confirmSendEmail();
+                  }
+                }}
+              />
+            </div>
+            
+            {recipientEmail && (
+              <div className="p-3 bg-muted rounded-lg">
+                <div className="text-sm font-medium mb-2">Email Preview:</div>
+                <div className="text-xs text-muted-foreground">
+                  <div><strong>To:</strong> {recipientEmail}</div>
+                  <div><strong>Subject:</strong> Your Helium Beta Invitation</div>
+                  <div className="mt-2"><strong>Message:</strong></div>
+                  <div className="mt-1 p-2 bg-background rounded border text-xs whitespace-pre-wrap font-mono">
+                    Dear {recipientEmail.split('@')[0].split('.')[0].charAt(0).toUpperCase() + recipientEmail.split('@')[0].split('.')[0].slice(1).toLowerCase()},
+
+Congratulations! You have been selected to join Helium — the OS for your business, in our first-ever Public Beta experience for businesses.
+
+Your account has been credited with 800 free Helium credits to explore and experience the power of Helium. Click below to activate your invite and get started:
+
+{selectedCode?.code}
+
+Helium is designed to be the operating system for business intelligence, giving you a single, seamless layer to connect data, decisions, and workflows. As this is our first public beta, you may notice minor bugs or quirks. If you do, your feedback will help us make Helium even better.
+
+You are not just testing a product. You are helping shape the future of business intelligence.
+
+Welcome to Helium OS. The future of work is here.
+
+Cheers,  
+Team Helium  
+https://he2.ai
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEmailDialogOpen(false);
+                setRecipientEmail("");
+                setSelectedCode(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmSendEmail}
+              disabled={!recipientEmail.trim() || isSendingEmail}
+            >
+              {isSendingEmail ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Send Email
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

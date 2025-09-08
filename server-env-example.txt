@@ -1,0 +1,14 @@
+# Backend Environment Variables
+# Copy this to .env in your backend directory
+
+# Server Configuration
+PORT=3000
+
+# Supabase Configuration
+# Get these from your Supabase project settings
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_ANON_KEY=your-anon-key-here
+
+# Example:
+# SUPABASE_URL=https://abcdefghijklmnop.supabase.co
+# SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...

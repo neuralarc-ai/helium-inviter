@@ -1,0 +1,30 @@
+# Helium Inviter Environment Variables
+
+# Supabase Configuration (for database)
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+
+# SMTP Configuration (for email sending)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM=Team Helium <your-email@gmail.com>
+
+# Example SMTP configurations:
+
+# Gmail (requires App Password)
+# SMTP_HOST=smtp.gmail.com
+# SMTP_PORT=587
+# SMTP_SECURE=false
+
+# Outlook/Hotmail
+# SMTP_HOST=smtp-mail.outlook.com
+# SMTP_PORT=587
+# SMTP_SECURE=false
+
+# Yahoo
+# SMTP_HOST=smtp.mail.yahoo.com
+# SMTP_PORT=587
+# SMTP_SECURE=false

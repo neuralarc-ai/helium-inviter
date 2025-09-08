@@ -14,6 +14,15 @@ export default {
     },
     extend: {
       colors: {
+        // Custom color palette
+        neon: {
+          green: "#96FF45",
+          blue: "#455BFF", 
+          yellow: "#FFFF45",
+          cyan: "#74EEF4",
+          pink: "#FF4596",
+        },
+        // Theme colors using your palette
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
