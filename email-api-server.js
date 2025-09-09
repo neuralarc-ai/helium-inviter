@@ -78,24 +78,35 @@ const handleSendEmail = async (req, res) => {
           });
         }
 
-        // Create email content
-        const emailContent = `Dear ${firstName},
-
-Congratulations! You have been selected to join Helium — the OS for your business, in our first-ever Public Beta experience for businesses.
-
-Your account has been credited with 1500 free Helium credits to explore and experience the power of Helium. Click below to activate your invite and get started:
-
-${inviteCode}
-
-Helium is designed to be the operating system for business intelligence, giving you a single, seamless layer to connect data, decisions, and workflows. As this is our first public beta, you may notice minor bugs or quirks. If you do, your feedback will help us make Helium even better.
-
-You are not just testing a product. You are helping shape the future of business intelligence.
-
-Welcome to Helium OS. The future of work is here.
-
-Cheers,  
-Team Helium  
-https://he2.ai`;
+        // Create HTML email content with light gray background
+        const emailContent = `
+        <div style="background-color: #CDCDCD; padding: 40px; font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <div style="max-width: 600px; margin: 0 auto;">
+            <p>Dear ${firstName},</p>
+            
+            <p><strong>Congratulations!</strong> You have been selected to join <strong>Helium</strong> — the <strong>OS</strong> for your business, our first-ever Public Beta experience for businesses.</p>
+            
+            <p>Your account has been credited with <strong>1500 free Helium credits</strong> to explore and experience the power of Helium. Click below to activate your invite and get started:</p>
+            
+            <div style="background-color: #fff; padding: 20px; margin: 20px 0; border-radius: 4px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">
+              ${inviteCode}
+            </div>
+            
+            <p>Helium is designed to be the operating system for business intelligence, giving you a single, seamless layer to connect data, decisions, and workflows. As this is our first public beta, you may notice minor bugs or quirks. If you do, your feedback will help us make Helium even better.</p>
+            
+            <p>You are not just testing a product. You are helping shape the future of business intelligence.</p>
+            
+            <p>Welcome to <strong>Helium OS</strong>. The future of work is here.</p>
+            
+            <p>Cheers,<br>Team Helium</p>
+            
+            <p><a href="https://he2.ai" style="color: #333; text-decoration: none;">www.he2.ai</a></p>
+            
+            <div style="margin-top: 30px; font-size: 12px; color: #666;">
+              Helium AI by Neural Arc Inc. <a href="https://neuralarc.ai" style="color: #666; text-decoration: none;">https://neuralarc.ai</a>
+            </div>
+          </div>
+        </div>`;
 
         // Create transporter
         const transporter = createTransporter();
@@ -161,17 +172,31 @@ const handleSendReminderEmail = async (req, res) => {
         }
 
         // Create reminder email content
-        const reminderEmailContent = `Dear ${firstName},
-
-Just a quick reminder—your exclusive Helium invite code ${inviteCode} is about to expire.
-
-We'd hate for you to miss out on your 1500 free Helium credits and a special 30% discount available only during this early access period.
-
-Welcome (again) to Helium OS. The future of work is here—make sure you're part of it.
-
-Cheers,  
-Team Helium  
-https://he2.ai`;
+        // Create HTML reminder email content with light gray background
+        const reminderEmailContent = `
+        <div style="background-color: #CDCDCD; padding: 40px; font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <div style="max-width: 600px; margin: 0 auto;">
+            <p>Dear ${firstName},</p>
+            
+            <p>Just a quick reminder—your exclusive Helium invite code is about to expire.</p>
+            
+            <div style="background-color: #fff; padding: 20px; margin: 20px 0; border-radius: 4px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">
+              ${inviteCode}
+            </div>
+            
+            <p>We'd hate for you to miss out on your <strong>1500 free Helium credits</strong> and a special 30% discount available only during this early access period.</p>
+            
+            <p>Welcome (again) to <strong>Helium OS</strong>. The future of work is here—make sure you're part of it.</p>
+            
+            <p>Cheers,<br>Team Helium</p>
+            
+            <p><a href="https://he2.ai" style="color: #333; text-decoration: none;">www.he2.ai</a></p>
+            
+            <div style="margin-top: 30px; font-size: 12px; color: #666;">
+              Helium AI by Neural Arc Inc. <a href="https://neuralarc.ai" style="color: #666; text-decoration: none;">https://neuralarc.ai</a>
+            </div>
+          </div>
+        </div>`;
 
         // Create transporter
         const transporter = createTransporter();
