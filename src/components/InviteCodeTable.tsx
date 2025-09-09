@@ -41,7 +41,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  Clock
 } from "lucide-react";
 import { format } from "date-fns";
 import { InviteCode } from "@/lib/api";
@@ -52,21 +53,46 @@ interface InviteCodeTableProps {
 
 export const InviteCodeTable = ({}: InviteCodeTableProps) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "used" | "not-used">("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [selectedCode, setSelectedCode] = useState<InviteCode | null>(null);
   const [recipientEmail, setRecipientEmail] = useState("");
   const { toast } = useToast();
-  const { inviteCodes, isLoading, error, updateCode, isUpdating, sendEmail, isSendingEmail } = useInviteCodes();
+  const { inviteCodes, isLoading, error, updateCode, isUpdating, sendEmail, isSendingEmail, sendReminderEmail, isSendingReminder } = useInviteCodes();
 
-  // Filter codes based on search term
+  // Filter codes based on search term and status filter
   const filteredCodes = useMemo(() => {
-    return inviteCodes.filter(code =>
-      code.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      code.status.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [inviteCodes, searchTerm]);
+    let filtered = inviteCodes.filter(code => {
+      // Text search filter
+      const matchesSearch = code.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        code.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (code.recipientName && code.recipientName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (code.recipientEmail && code.recipientEmail.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (code.emailSentTo && code.emailSentTo.some(email => email.toLowerCase().includes(searchTerm.toLowerCase())));
+      
+      // Status filter
+      let matchesStatus = true;
+      if (statusFilter === "used") {
+        matchesStatus = code.status === "Used";
+      } else if (statusFilter === "not-used") {
+        matchesStatus = code.status === "Not Used";
+      }
+      
+      return matchesSearch && matchesStatus;
+    });
+    
+    // Sort to show used codes at the top, then by date (newest first)
+    return filtered.sort((a, b) => {
+      // First priority: Used codes come first
+      if (a.status === "Used" && b.status !== "Used") return -1;
+      if (a.status !== "Used" && b.status === "Used") return 1;
+      
+      // Second priority: Within same status, sort by date (newest first)
+      return new Date(b.dateGenerated).getTime() - new Date(a.dateGenerated).getTime();
+    });
+  }, [inviteCodes, searchTerm, statusFilter]);
 
   // Pagination calculations
   const totalItems = filteredCodes.length;
@@ -75,10 +101,10 @@ export const InviteCodeTable = ({}: InviteCodeTableProps) => {
   const endIndex = startIndex + itemsPerPage;
   const paginatedCodes = filteredCodes.slice(startIndex, endIndex);
 
-  // Reset to first page when search term changes
+  // Reset to first page when search term or status filter changes
   useMemo(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, statusFilter]);
 
   // Pagination handlers
   const goToFirstPage = () => setCurrentPage(1);
@@ -88,6 +114,8 @@ export const InviteCodeTable = ({}: InviteCodeTableProps) => {
   const goToPage = (page: number) => setCurrentPage(Math.max(1, Math.min(totalPages, page)));
 
   const markAsUsed = (id: string) => {
+    // For now, we'll mark as used without user ID since we don't have the actual user
+    // In a real system, this would be handled automatically when users sign up with the code
     updateCode({ id, updates: { status: "Used" } });
   };
 
@@ -141,6 +169,40 @@ export const InviteCodeTable = ({}: InviteCodeTableProps) => {
     setSelectedCode(null);
   };
 
+  const handleSendReminderEmail = async (code: InviteCode) => {
+    if (!code.emailSentTo || code.emailSentTo.length === 0) {
+      toast({
+        title: "No email found",
+        description: "This invite code hasn't been sent to any email address yet.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isExpired(code.expiryDate)) {
+      toast({
+        title: "Code expired",
+        description: "Cannot send reminder for expired invite codes.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // For now, we'll use the first email in the list
+    // In a real system, you might want to show a dialog to select which email to send to
+    const email = code.emailSentTo[0];
+    
+    // Extract first name from email (fallback if we don't have user profile data)
+    const firstName = email.split('@')[0].split('.')[0];
+    const capitalizedFirstName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+
+    sendReminderEmail({
+      email: email,
+      inviteCode: code.code,
+      firstName: capitalizedFirstName,
+    });
+  };
+
   const isExpired = (expiryDate: Date) => {
     return new Date() > expiryDate;
   };
@@ -166,7 +228,18 @@ export const InviteCodeTable = ({}: InviteCodeTableProps) => {
     return { total, used, expired, active };
   };
 
-  const stats = getTotalStats();
+  const getFilteredStats = () => {
+    const total = filteredCodes.length;
+    const used = filteredCodes.filter(code => code.status === "Used").length;
+    const expired = filteredCodes.filter(code => isExpired(code.expiryDate) && code.status === "Not Used").length;
+    const active = total - used - expired;
+    
+    return { total, used, expired, active };
+  };
+
+  const totalStats = getTotalStats();
+  const filteredStats = getFilteredStats();
+  const stats = statusFilter === "all" ? totalStats : filteredStats;
 
   // Loading state
   if (isLoading) {
@@ -219,7 +292,7 @@ export const InviteCodeTable = ({}: InviteCodeTableProps) => {
           <div className="flex gap-4 text-sm">
             <div className="text-center">
               <div className="font-bold text-2xl neon-blue">{stats.total}</div>
-              <div className="text-black/70">Total</div>
+              <div className="text-black/70">{statusFilter === "all" ? "Total" : "Filtered"}</div>
             </div>
             <div className="text-center">
               <div className="font-bold text-2xl neon-green">{stats.used}</div>
@@ -235,14 +308,29 @@ export const InviteCodeTable = ({}: InviteCodeTableProps) => {
             </div>
           </div>
         </div>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 neon-cyan" />
-          <Input
-            placeholder="Search invite codes..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 input-neon"
-          />
+        <div className="flex gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 neon-cyan" />
+            <Input
+              placeholder="Search invite codes..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 input-neon"
+            />
+          </div>
+          <Select
+            value={statusFilter}
+            onValueChange={(value: "all" | "used" | "not-used") => setStatusFilter(value)}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Codes</SelectItem>
+              <SelectItem value="used">Used Only</SelectItem>
+              <SelectItem value="not-used">Not Used Only</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </CardHeader>
       <CardContent>
@@ -253,6 +341,8 @@ export const InviteCodeTable = ({}: InviteCodeTableProps) => {
                 <TableHead className="font-semibold neon-blue">Invite Code</TableHead>
                 <TableHead className="font-semibold neon-blue">Date Generated</TableHead>
                 <TableHead className="font-semibold neon-blue">Expiry Date</TableHead>
+                <TableHead className="font-semibold neon-blue">Email Sent To</TableHead>
+                <TableHead className="font-semibold neon-blue">Recipient</TableHead>
                 <TableHead className="font-semibold neon-blue">Status</TableHead>
                 <TableHead className="font-semibold neon-blue">Actions</TableHead>
               </TableRow>
@@ -260,7 +350,7 @@ export const InviteCodeTable = ({}: InviteCodeTableProps) => {
             <TableBody>
               {paginatedCodes.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-white/70">
+                  <TableCell colSpan={7} className="text-center py-8 text-white/70">
                     {searchTerm ? "No invite codes match your search" : "No invite codes generated yet"}
                   </TableCell>
                 </TableRow>
@@ -286,6 +376,31 @@ export const InviteCodeTable = ({}: InviteCodeTableProps) => {
                         {format(code.expiryDate, "MMM dd, yyyy")}
                       </span>
                     </TableCell>
+                    <TableCell>
+                      {code.emailSentTo && code.emailSentTo.length > 0 ? (
+                        <div className="space-y-1">
+                          {code.emailSentTo.map((email, index) => (
+                            <div key={index} className="text-sm text-white">
+                              {email}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-white/50 italic">No email sent</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {code.status === "Used" && code.recipientName ? (
+                        <div className="space-y-1">
+                          <div className="font-medium text-white">{code.recipientName}</div>
+                          <div className="text-xs text-white/70">User ID: {code.usedBy}</div>
+                        </div>
+                      ) : (
+                        <span className="text-white/50 italic">
+                          {code.status === "Used" ? "No user ID linked" : "Not used yet"}
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell>{getStatusBadge(code)}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
@@ -295,31 +410,44 @@ export const InviteCodeTable = ({}: InviteCodeTableProps) => {
                               variant="outline"
                               size="sm"
                               onClick={() => markAsUsed(code.id)}
-                              className="text-xs btn-neon-green"
+                              className="text-xs btn-neon-green h-8 w-8 p-0"
                               disabled={isUpdating}
                             >
                               {isUpdating ? (
-                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
-                                <CheckCircle className="h-3 w-3 mr-1" />
+                                <CheckCircle className="h-4 w-4" />
                               )}
-                              Mark Used
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
-                              className="text-xs btn-neon-blue"
+                              className="text-xs btn-neon-blue h-8 w-8 p-0"
                               onClick={() => handleSendEmail(code)}
                               disabled={isSendingEmail}
                             >
                               {isSendingEmail ? (
-                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
-                                <Mail className="h-3 w-3 mr-1" />
+                                <Mail className="h-4 w-4" />
                               )}
-                              Send Email
                             </Button>
                           </>
+                        )}
+                        {code.emailSentTo && code.emailSentTo.length > 0 && !isExpired(code.expiryDate) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs btn-neon-purple h-8 w-8 p-0"
+                            onClick={() => handleSendReminderEmail(code)}
+                            disabled={isSendingReminder}
+                          >
+                            {isSendingReminder ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Clock className="h-4 w-4" />
+                            )}
+                          </Button>
                         )}
                       </div>
                     </TableCell>
@@ -470,7 +598,7 @@ export const InviteCodeTable = ({}: InviteCodeTableProps) => {
 
 Congratulations! You have been selected to join Helium — the OS for your business, in our first-ever Public Beta experience for businesses.
 
-Your account has been credited with 800 free Helium credits to explore and experience the power of Helium. Click below to activate your invite and get started:
+Your account has been credited with 1500 free Helium credits to explore and experience the power of Helium. Click below to activate your invite and get started:
 
 {selectedCode?.code}
 

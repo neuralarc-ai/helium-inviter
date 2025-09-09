@@ -13,13 +13,15 @@
     "express": "^4.18.2",
     "cors": "^2.8.5",
     "@supabase/supabase-js": "^2.38.0",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "nodemailer": "^6.9.7"
   },
   "keywords": [
     "api",
     "express",
     "supabase",
-    "invite-codes"
+    "invite-codes",
+    "email"
   ],
   "author": "",
   "license": "ISC"

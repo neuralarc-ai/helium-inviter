@@ -101,6 +101,9 @@ export function useInviteCodes() {
   const sendEmailMutation = useMutation({
     mutationFn: inviteCodeApi.sendInviteEmail,
     onSuccess: (result) => {
+      // Refresh the invite codes data to show updated email tracking
+      queryClient.invalidateQueries({ queryKey: ['inviteCodes'] });
+      
       toast({
         title: "Email sent successfully!",
         description: result.message,
@@ -109,6 +112,27 @@ export function useInviteCodes() {
     onError: (error) => {
       toast({
         title: "Failed to send email",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Send reminder email mutation
+  const sendReminderEmailMutation = useMutation({
+    mutationFn: inviteCodeApi.sendReminderEmail,
+    onSuccess: (result) => {
+      // Refresh the invite codes data to show updated email tracking
+      queryClient.invalidateQueries({ queryKey: ['inviteCodes'] });
+      
+      toast({
+        title: "Reminder email sent successfully!",
+        description: result.message,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to send reminder email",
         description: error.message,
         variant: "destructive",
       });
@@ -124,9 +148,11 @@ export function useInviteCodes() {
     createCode: createCodeMutation.mutate,
     deleteCode: deleteCodeMutation.mutate,
     sendEmail: sendEmailMutation.mutate,
+    sendReminderEmail: sendReminderEmailMutation.mutate,
     isUpdating: updateCodeMutation.isPending,
     isCreating: createCodeMutation.isPending,
     isDeleting: deleteCodeMutation.isPending,
     isSendingEmail: sendEmailMutation.isPending,
+    isSendingReminder: sendReminderEmailMutation.isPending,
   };
 }

@@ -3,6 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useInviteCodes } from "@/hooks/useInviteCodes";
 import { Copy, Mail, Sparkles, Loader2, X } from "lucide-react";
@@ -59,7 +66,7 @@ export const InviteCodeGenerator = ({}: InviteCodeGeneratorProps) => {
 
 Congratulations! You have been selected to join Helium — the OS for your business, in our first-ever Public Beta experience for businesses.
 
-Your account has been credited with 800 free Helium credits to explore and experience the power of Helium. Click below to activate your invite and get started:
+Your account has been credited with 1500 free Helium credits to explore and experience the power of Helium. Click below to activate your invite and get started:
 
 ${code}
 
@@ -137,132 +144,154 @@ https://he2.ai`;
   };
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
-      <Card className="shadow-card transition-smooth hover:shadow-elegant">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
-            Generate Invite Code
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="text-center">
-            <Button 
-              onClick={generateInviteCode} 
-              disabled={isCreating}
-              className="bg-gradient-primary hover:opacity-90 transition-smooth shadow-elegant"
-              size="lg"
-            >
-              {isCreating ? (
-                <>
-                  <Loader2 className="h-4 w-4 ml-2 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                "Generate New Code"
-              )}
-            </Button>
-          </div>
-          
-          {lastGeneratedCode && (
-            <div className="p-4 bg-muted rounded-lg space-y-3">
-              <Label className="text-sm font-medium">Latest Generated Code:</Label>
-              <div className="flex items-center gap-2">
-                <div className="font-mono text-lg font-bold text-primary bg-primary/10 px-3 py-2 rounded border-2 border-primary/20">
-                  {lastGeneratedCode}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyToClipboard(lastGeneratedCode)}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
+    <Card className="shadow-card transition-smooth hover:shadow-elegant">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-primary" />
+          Generate Invite Code
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Left Section - Generate Button */}
+          <div className="space-y-4">
+            <div className="text-center">
+              <Button 
+                onClick={generateInviteCode} 
+                disabled={isCreating}
+                className="bg-gradient-primary hover:opacity-90 transition-smooth shadow-elegant"
+                size="lg"
+              >
+                {isCreating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  "Generate New Code"
+                )}
+              </Button>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
 
-      <Card className="shadow-card transition-smooth hover:shadow-elegant">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5 text-primary" />
-            Email Management
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="emails">Recipient Email Address</Label>
-            <Input
-              id="emails"
-              placeholder="Enter email address (e.g., user@example.com)"
-              value={recipientEmails}
-              onChange={(e) => setRecipientEmails(e.target.value)}
-            />
+          {/* Right Section - Generated Code Display */}
+          <div className="space-y-4">
+            {lastGeneratedCode ? (
+              <div className="p-4 bg-muted rounded-lg space-y-3">
+                <Label className="text-sm font-medium">Latest Generated Code:</Label>
+                <div className="flex items-center gap-2">
+                  <div className="font-mono text-lg font-bold text-primary bg-primary/10 px-3 py-2 rounded border-2 border-primary/20">
+                    {lastGeneratedCode}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(lastGeneratedCode)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 bg-muted rounded-lg text-center text-muted-foreground">
+                <p className="text-sm">No code generated yet</p>
+                <p className="text-xs mt-1">Click "Generate New Code" to create an invite code</p>
+              </div>
+            )}
           </div>
-          
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={handleEmailPreview}
-              disabled={!lastGeneratedCode}
-              className="flex-1"
-            >
-              {showEmailPreview ? "Hide Preview" : "Preview Email"}
-            </Button>
-            <Button 
-              onClick={handleSendEmail}
-              disabled={!lastGeneratedCode || !recipientEmails.trim() || isSendingEmail}
-              className="flex-1"
-            >
-              {isSendingEmail ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                "Send Email"
-              )}
-            </Button>
-          </div>
-          
-          {/* Email Preview Section */}
-          {showEmailPreview && (
-            <div className="mt-4 p-4 bg-muted rounded-lg border">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="font-medium text-sm">Email Preview</h4>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowEmailPreview(false)}
-                  className="h-6 w-6 p-0"
+        </div>
+
+        {/* Email Management Section - Full Width Below */}
+        {lastGeneratedCode && (
+          <div className="mt-6 pt-6 border-t">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Mail className="h-5 w-5 text-primary" />
+                <h3 className="text-lg font-semibold">Email Management</h3>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="emails">Recipient Email Address</Label>
+                <Input
+                  id="emails"
+                  placeholder="Enter email address (e.g., user@example.com)"
+                  value={recipientEmails}
+                  onChange={(e) => setRecipientEmails(e.target.value)}
+                />
+              </div>
+              
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={handleEmailPreview}
+                  disabled={!lastGeneratedCode}
+                  className="flex-1"
                 >
-                  <X className="h-4 w-4" />
+                  {showEmailPreview ? "Hide Preview" : "Preview Email"}
+                </Button>
+                <Button 
+                  onClick={handleSendEmail}
+                  disabled={!lastGeneratedCode || !recipientEmails.trim() || isSendingEmail}
+                  className="flex-1"
+                >
+                  {isSendingEmail ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    "Send Email"
+                  )}
                 </Button>
               </div>
-              <div className="space-y-2 text-sm">
-                <div>
-                  <span className="font-medium">To:</span> {recipientEmails || "No recipient entered"}
-                </div>
-                <div>
-                  <span className="font-medium">Subject:</span> Your Helium Beta Invitation
-                </div>
-                <div className="mt-3">
-                  <span className="font-medium">Message:</span>
-                  <div className="mt-2 p-3 bg-background rounded border text-xs whitespace-pre-wrap font-mono leading-relaxed">
-                    {getEmailTemplate(lastGeneratedCode, recipientEmails.trim() || undefined)}
+              
+              {/* Email Preview Dialog */}
+              <Dialog open={showEmailPreview} onOpenChange={setShowEmailPreview}>
+                <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Mail className="h-5 w-5 text-primary" />
+                      Email Preview
+                    </DialogTitle>
+                    <DialogDescription>
+                      Preview of the invite email that will be sent
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <div className="space-y-4">
+                    <div className="grid gap-4">
+                      <div>
+                        <Label className="text-sm font-medium">To:</Label>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          {recipientEmails || "No recipient entered"}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <Label className="text-sm font-medium">Subject:</Label>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          Your Helium Beta Invitation
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <Label className="text-sm font-medium">Message:</Label>
+                        <div className="mt-2 p-4 bg-muted rounded-lg border text-sm whitespace-pre-wrap font-mono leading-relaxed max-h-96 overflow-y-auto">
+                          {getEmailTemplate(lastGeneratedCode, recipientEmails.trim() || undefined)}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </DialogContent>
+              </Dialog>
+              
+              <p className="text-xs text-muted-foreground">
+                Email will be sent automatically using our email service
+              </p>
             </div>
-          )}
-          
-          <p className="text-xs text-muted-foreground">
-            Email will be sent automatically using our email service
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };

@@ -83,7 +83,7 @@ const handleSendEmail = async (req, res) => {
 
 Congratulations! You have been selected to join Helium — the OS for your business, in our first-ever Public Beta experience for businesses.
 
-Your account has been credited with 800 free Helium credits to explore and experience the power of Helium. Click below to activate your invite and get started:
+Your account has been credited with 1500 free Helium credits to explore and experience the power of Helium. Click below to activate your invite and get started:
 
 ${inviteCode}
 
@@ -133,6 +133,82 @@ https://he2.ai`;
   }
 };
 
+// Send reminder email endpoint
+const handleSendReminderEmail = async (req, res) => {
+  try {
+    let body = '';
+    
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+    
+    req.on('end', async () => {
+      try {
+        const { email, inviteCode, firstName } = JSON.parse(body);
+
+        if (!email || !inviteCode || !firstName) {
+          return sendJSON(res, 400, {
+            error: 'Email, invite code, and first name are required'
+          });
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          return sendJSON(res, 400, {
+            error: 'Invalid email format'
+          });
+        }
+
+        // Create reminder email content
+        const reminderEmailContent = `Dear ${firstName},
+
+Just a quick reminder—your exclusive Helium invite code ${inviteCode} is about to expire.
+
+We'd hate for you to miss out on your 1500 free Helium credits and a special 30% discount available only during this early access period.
+
+Welcome (again) to Helium OS. The future of work is here—make sure you're part of it.
+
+Cheers,  
+Team Helium  
+https://he2.ai`;
+
+        // Create transporter
+        const transporter = createTransporter();
+
+        // Send reminder email
+        const info = await transporter.sendMail({
+          from: process.env.SMTP_FROM || process.env.SMTP_USER,
+          to: email,
+          subject: 'Reminder – Your Helium invite code is expiring soon!',
+          text: reminderEmailContent,
+          html: reminderEmailContent.replace(/\n/g, '<br>'),
+        });
+
+        console.log('Reminder email sent successfully:', info.messageId);
+
+        sendJSON(res, 200, {
+          success: true,
+          messageId: info.messageId,
+          message: 'Reminder email sent successfully'
+        });
+
+      } catch (error) {
+        console.error('Error sending reminder email:', error);
+        sendJSON(res, 500, {
+          error: error.message || 'Failed to send reminder email'
+        });
+      }
+    });
+
+  } catch (error) {
+    console.error('Error handling reminder request:', error);
+    sendJSON(res, 500, {
+      error: 'Internal server error'
+    });
+  }
+};
+
 // Create server
 const server = http.createServer((req, res) => {
   const parsedUrl = url.parse(req.url, true);
@@ -151,6 +227,10 @@ const server = http.createServer((req, res) => {
 
   if (pathname === '/api/send-invite-email' && method === 'POST') {
     return handleSendEmail(req, res);
+  }
+
+  if (pathname === '/api/send-reminder-email' && method === 'POST') {
+    return handleSendReminderEmail(req, res);
   }
 
   // 404 for other routes

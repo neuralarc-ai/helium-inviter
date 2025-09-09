@@ -1,0 +1,44 @@
+# Helium Inviter VM Server Environment Variables
+# Copy this to .env in your server directory
+
+# Server Configuration
+PORT=3001
+NODE_ENV=production
+FRONTEND_URL=https://admin.he2.ai
+
+# Supabase Configuration
+# Get these from your Supabase project settings
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+
+# SMTP Configuration for Email Sending
+# Gmail example (recommended)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM=Team Helium <your-email@gmail.com>
+
+# Alternative SMTP providers:
+# Outlook/Hotmail:
+# SMTP_HOST=smtp-mail.outlook.com
+# SMTP_PORT=587
+# SMTP_SECURE=false
+
+# Yahoo:
+# SMTP_HOST=smtp.mail.yahoo.com
+# SMTP_PORT=587
+# SMTP_SECURE=false
+
+# Custom SMTP:
+# SMTP_HOST=your-smtp-host.com
+# SMTP_PORT=587
+# SMTP_SECURE=false
+
+# Example values:
+# VITE_SUPABASE_URL=https://abcdefghijklmnop.supabase.co
+# VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+# SMTP_USER=helium@he2.ai
+# SMTP_PASS=your-secure-password
+# SMTP_FROM=Team Helium <helium@he2.ai>
