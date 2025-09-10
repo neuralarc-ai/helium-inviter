@@ -131,7 +131,7 @@ server {
 
     # Backend API proxy
     location /api/ {
-        proxy_pass http://localhost:3001;
+        proxy_pass http://localhost:3002;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -149,7 +149,7 @@ server {
 
     # Health check endpoint
     location /health {
-        proxy_pass http://localhost:3001/api/health;
+        proxy_pass http://localhost:3002/api/health;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -204,3 +204,5 @@ print_warning "3. Setup SSL certificate: sudo certbot --nginx -d admin.he2.ai"
 print_warning "4. Test the application: curl http://admin.he2.ai/api/health"
 
 print_success "Your Helium Inviter application is ready for deployment!"
+
+

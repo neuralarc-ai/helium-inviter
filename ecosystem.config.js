@@ -9,7 +9,7 @@ module.exports = {
     max_memory_restart: '1G',
     env: {
       NODE_ENV: 'production',
-      PORT: 3001
+      PORT: 3002
     },
     error_file: '/var/log/pm2/helium-inviter-error.log',
     out_file: '/var/log/pm2/helium-inviter-out.log',
@@ -17,3 +17,5 @@ module.exports = {
     time: true
   }]
 };
+
+

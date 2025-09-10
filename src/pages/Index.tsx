@@ -1,11 +1,19 @@
+import { useEffect } from "react";
 import { DashboardStats } from "@/components/DashboardStats";
 import { InviteCodeGenerator } from "@/components/InviteCodeGenerator";
 import { InviteCodeTable } from "@/components/InviteCodeTable";
 import { WaitlistTable } from "@/components/WaitlistTable";
 import { UserMenu } from "@/components/UserMenu";
 import { Separator } from "@/components/ui/separator";
+import { useInviteCodes } from "@/hooks/useInviteCodes";
 
 const Index = () => {
+  const { deleteExpiredCodes } = useInviteCodes();
+
+  // Automatically clean up expired codes when the app loads
+  useEffect(() => {
+    deleteExpiredCodes();
+  }, [deleteExpiredCodes]);
 
   return (
     <div className="min-h-screen bg-black">

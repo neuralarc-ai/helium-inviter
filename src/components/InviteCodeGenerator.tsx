@@ -144,7 +144,7 @@ https://he2.ai`;
   };
 
   return (
-    <Card className="shadow-card transition-smooth hover:shadow-elegant">
+    <Card className="shadow-card transition-smooth hover:shadow-elegant max-w-4xl mx-auto">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />
@@ -152,9 +152,9 @@ https://he2.ai`;
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left Section - Generate Button */}
-          <div className="space-y-4">
+          <div className="space-y-4 flex flex-col justify-center items-center mr-auto mb-4">
             <div className="text-center">
               <Button 
                 onClick={generateInviteCode} 
@@ -175,7 +175,7 @@ https://he2.ai`;
           </div>
 
           {/* Right Section - Generated Code Display */}
-          <div className="space-y-4">
+          <div className="flex flex-col justify-center space-y-4 mr-auto mb-4">
             {lastGeneratedCode ? (
               <div className="p-4 bg-muted rounded-lg space-y-3">
                 <Label className="text-sm font-medium">Latest Generated Code:</Label>

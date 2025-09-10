@@ -139,6 +139,27 @@ export function useInviteCodes() {
     },
   });
 
+  // Delete expired codes mutation
+  const deleteExpiredCodesMutation = useMutation({
+    mutationFn: inviteCodeApi.deleteExpiredCodes,
+    onSuccess: (result) => {
+      // Refresh the invite codes data
+      queryClient.invalidateQueries({ queryKey: ['inviteCodes'] });
+      
+      toast({
+        title: "Expired codes cleaned up",
+        description: `${result.deletedCount} expired invite codes deleted`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to delete expired codes",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     inviteCodes,
     isLoading,
@@ -149,10 +170,12 @@ export function useInviteCodes() {
     deleteCode: deleteCodeMutation.mutate,
     sendEmail: sendEmailMutation.mutate,
     sendReminderEmail: sendReminderEmailMutation.mutate,
+    deleteExpiredCodes: deleteExpiredCodesMutation.mutate,
     isUpdating: updateCodeMutation.isPending,
     isCreating: createCodeMutation.isPending,
     isDeleting: deleteCodeMutation.isPending,
     isSendingEmail: sendEmailMutation.isPending,
     isSendingReminder: sendReminderEmailMutation.isPending,
+    isDeletingExpired: deleteExpiredCodesMutation.isPending,
   };
 }

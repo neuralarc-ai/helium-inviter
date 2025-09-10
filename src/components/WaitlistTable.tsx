@@ -258,6 +258,7 @@ export const WaitlistTable = ({}: WaitlistTableProps) => {
                 <TableHead className="font-semibold neon-blue">Name</TableHead>
                 <TableHead className="font-semibold neon-blue">Email</TableHead>
                 <TableHead className="font-semibold neon-blue">Company</TableHead>
+                <TableHead className="font-semibold neon-blue">Reference</TableHead>
                 <TableHead className="font-semibold neon-blue">Phone</TableHead>
                 <TableHead className="font-semibold neon-blue">Referral Source</TableHead>
                 <TableHead className="font-semibold neon-blue">Joined</TableHead>
@@ -268,7 +269,7 @@ export const WaitlistTable = ({}: WaitlistTableProps) => {
             <TableBody>
               {paginatedEntries.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-white/70">
+                  <TableCell colSpan={9} className="text-center py-8 text-white/70">
                     {searchTerm ? "No waitlist entries match your search" : "No waitlist entries found"}
                   </TableCell>
                 </TableRow>
@@ -292,6 +293,16 @@ export const WaitlistTable = ({}: WaitlistTableProps) => {
                         </div>
                       ) : (
                         <span className="text-white/50 italic">No company</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {entry.reference ? (
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-neon-orange" />
+                          <span className="text-white">{entry.reference}</span>
+                        </div>
+                      ) : (
+                        <span className="text-white/50 italic">No reference</span>
                       )}
                     </TableCell>
                     <TableCell>

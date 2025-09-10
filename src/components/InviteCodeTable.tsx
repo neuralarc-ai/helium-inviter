@@ -60,7 +60,7 @@ export const InviteCodeTable = ({}: InviteCodeTableProps) => {
   const [selectedCode, setSelectedCode] = useState<InviteCode | null>(null);
   const [recipientEmail, setRecipientEmail] = useState("");
   const { toast } = useToast();
-  const { inviteCodes, isLoading, error, updateCode, isUpdating, sendEmail, isSendingEmail, sendReminderEmail, isSendingReminder } = useInviteCodes();
+  const { inviteCodes, isLoading, error, updateCode, isUpdating, sendEmail, isSendingEmail, sendReminderEmail, isSendingReminder, deleteExpiredCodes, isDeletingExpired } = useInviteCodes();
 
   // Filter codes based on search term and status filter
   const filteredCodes = useMemo(() => {
@@ -307,6 +307,25 @@ export const InviteCodeTable = ({}: InviteCodeTableProps) => {
               <div className="text-black/70">Expired</div>
             </div>
           </div>
+          <Button
+            onClick={() => deleteExpiredCodes()}
+            disabled={isDeletingExpired || stats.expired === 0}
+            variant="outline"
+            size="sm"
+            className="ml-4"
+          >
+            {isDeletingExpired ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Cleaning...
+              </>
+            ) : (
+              <>
+                <Clock className="h-4 w-4 mr-2" />
+                Clean Expired
+              </>
+            )}
+          </Button>
         </div>
         <div className="flex gap-4">
           <div className="relative flex-1">
@@ -342,7 +361,6 @@ export const InviteCodeTable = ({}: InviteCodeTableProps) => {
                 <TableHead className="font-semibold neon-blue">Date Generated</TableHead>
                 <TableHead className="font-semibold neon-blue">Expiry Date</TableHead>
                 <TableHead className="font-semibold neon-blue">Email Sent To</TableHead>
-                <TableHead className="font-semibold neon-blue">Recipient</TableHead>
                 <TableHead className="font-semibold neon-blue">Status</TableHead>
                 <TableHead className="font-semibold neon-blue">Actions</TableHead>
               </TableRow>
@@ -350,7 +368,7 @@ export const InviteCodeTable = ({}: InviteCodeTableProps) => {
             <TableBody>
               {paginatedCodes.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-white/70">
+                  <TableCell colSpan={6} className="text-center py-8 text-white/70">
                     {searchTerm ? "No invite codes match your search" : "No invite codes generated yet"}
                   </TableCell>
                 </TableRow>
@@ -387,18 +405,6 @@ export const InviteCodeTable = ({}: InviteCodeTableProps) => {
                         </div>
                       ) : (
                         <span className="text-white/50 italic">No email sent</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {code.status === "Used" && code.recipientName ? (
-                        <div className="space-y-1">
-                          <div className="font-medium text-white">{code.recipientName}</div>
-                          <div className="text-xs text-white/70">User ID: {code.usedBy}</div>
-                        </div>
-                      ) : (
-                        <span className="text-white/50 italic">
-                          {code.status === "Used" ? "No user ID linked" : "Not used yet"}
-                        </span>
                       )}
                     </TableCell>
                     <TableCell>{getStatusBadge(code)}</TableCell>

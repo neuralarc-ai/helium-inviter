@@ -395,6 +395,23 @@ export const inviteCodeApi = {
       throw new Error(`Failed to delete waitlist entry: ${error.message}`);
     }
   },
+
+  // Delete expired invite codes
+  async deleteExpiredCodes(): Promise<{ deletedCount: number }> {
+    const now = new Date().toISOString();
+    
+    const { data, error } = await supabase
+      .from('invite_codes')
+      .delete()
+      .lt('expires_at', now)
+      .select('id');
+
+    if (error) {
+      throw new Error(`Failed to delete expired invite codes: ${error.message}`);
+    }
+
+    return { deletedCount: data?.length || 0 };
+  },
 };
 
 // Helper function to transform database waitlist entry to frontend format
